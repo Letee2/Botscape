@@ -49,7 +49,7 @@ El sistema sigue una arquitectura de microservicios contenerizados:
 3. **Storage Layer:** PostgreSQL con esquema relacional.
 4. **Dashboard:** Interfaz analítica basada en Streamlit.
 
-Para ver el diagrama detallado de componentes y flujos de datos, consulta la [Documentación de Arquitectura](./docs/index.html).
+Para ver el diagrama detallado de componentes y flujos de datos, consulta la [Documentación de Arquitectura](https://letee2.github.io/Botscape/report.html).
 
 ---
 

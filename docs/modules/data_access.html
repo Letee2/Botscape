@@ -1,0 +1,136 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+    <link rel="icon" href="../media/favicon.ico" type="image/x-icon">
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Python Data Layer | BotScape Docs</title>
+    <link rel="stylesheet" href="../styles.css">
+
+    <style>
+        /* Estilos de Tarjeta (Base) */
+        .doc-container {
+            background: #ffffff;
+            border-radius: 8px;
+            box-shadow: 0 1px 3px 0 rgba(60,64,67,0.3);
+            padding: 40px; 
+            max-width: 1000px;
+            margin: 0 auto;
+        }
+
+        /* Ajustes de tipografía para la tarjeta */
+        h1 { margin-top: 0; }
+        hr { border: 0; border-top: 1px solid #dadce0; margin: 30px 0; }
+
+        /* Estilos para bloques de código y código inline */
+        code {
+            background-color: #f1f3f4;
+            padding: 2px 4px;
+            border-radius: 4px;
+            font-family: monospace;
+            font-size: 0.9em;
+            color: #c7254e; /* Color rojizo estándar para código inline */
+        }
+        
+        /* En caso de que se añadan bloques pre en el futuro */
+        pre {
+            background-color: #f5f5f5;
+            border-radius: 4px;
+            border: 1px solid #eee;
+            padding: 15px;
+            overflow-x: auto;
+        }
+    </style>
+</head>
+<body>
+
+    <aside class="sidebar" id="sidebar-placeholder"></aside>
+
+    <main class="main-content">
+        <div class="doc-container">
+            
+            <h1>Capa de Acceso a Datos (Python)</h1>
+            <p>
+                La interacción entre la aplicación y PostgreSQL se gestiona mediante una arquitectura modular ubicada en <code>botscape/shared/db/</code>. 
+                Este diseño desacopla la gestión de conexiones, la ingesta masiva y las consultas analíticas.
+            </p>
+
+            <hr>
+
+            <h2>1. Gestión de Conexiones (<code>core.py</code>)</h2>
+            <p>Módulo de bajo nivel encargado del ciclo de vida de las conexiones utilizando el driver <code>psycopg</code> (v3).</p>
+            <ul>
+                <li><strong>Configuración Centralizada:</strong> Carga credenciales y DSN desde <code>botscape.config.settings</code>.</li>
+                <li><strong>Row Factory:</strong> Configura las conexiones con <code>psycopg.rows.dict_row</code>, permitiendo acceder a los resultados como diccionarios (ej. <code>row['token']</code>) en lugar de tuplas numéricas.</li>
+                <li><strong>Transaccionalidad:</strong>
+                    <ul>
+                        <li><code>execute_sql(sql, params)</code>: Ejecuta escrituras atómicas con <strong>commit</strong> y <strong>rollback</strong> automáticos.</li>
+                        <li><code>get_conn()</code>: Provee conexiones crudas para procesos que requieren gestión manual de transacciones (ej. operaciones en lote).</li>
+                    </ul>
+                </li>
+            </ul>
+
+            <h2>2. Ingesta de Datos (<code>ingest.py</code>)</h2>
+            <p>Optimizado para el servicio <strong>Listener</strong>, este módulo maneja la escritura intensiva de datos en tiempo real.</p>
+
+            <h3>Tipado Estricto</h3>
+            <p>Se emplean <code>dataclasses</code> para validar la estructura de los datos antes de la persistencia:</p>
+            <ul>
+                <li><code>MessageRecord</code>: Normalización de mensajes de Telegram.</li>
+                <li><code>EntityRecord</code>: IOCs extraídos (URLs, emails, wallets).</li>
+                <li><code>AttachmentRecord</code>: Metadatos de archivos adjuntos.</li>
+            </ul>
+
+            <h3>Mecanismos de Idempotencia</h3>
+            <p>Implementa lógica <em>Upsert</em> para garantizar la integridad de los datos sin interrumpir el flujo:</p>
+            <ul>
+                <li><strong>Mensajes (<code>insert_message</code>):</strong> Usa <code>ON CONFLICT DO NOTHING</code>. Siempre retorna el ID del mensaje (nuevo o existente) para mantener la integridad referencial.</li>
+                <li><strong>Entidades (<code>insert_entities_batch</code>):</strong> Utiliza <code>executemany</code> para inserciones en bloque, actualizando la métrica de confianza (<code>confidence</code>) si la entidad ya existe.</li>
+            </ul>
+
+            <h2>3. Lógica de Dominio (<code>actions.py</code>)</h2>
+            <p>Encapsula operaciones transaccionales complejas de la lógica de negocio, utilizadas por el Profiler y la administración.</p>
+            <ul>
+                <li><strong>Control de Bots:</strong> Funciones para activar o pausar la monitorización (<code>set_bot_status</code>).</li>
+                <li><strong>Perfilado IA (<code>save_bot_profile</code>):</strong> 
+                    Persiste el análisis generado por el LLM y gestiona el etiquetado semántico. Utiliza una estrategia de <em>Clean Slate</em> con <strong>CTEs (Common Table Expressions)</strong> para gestionar etiquetas de forma atómica (creación y asignación en un solo paso).
+                </li>
+            </ul>
+
+            <h2>4. Consultas Especializadas (<code>queries/</code>)</h2>
+            <p>
+                Para mantener el código limpio y mantenible, las consultas SQL de lectura se han separado del código de aplicación y organizado por dominio funcional en el paquete <code>botscape/shared/db/queries/</code>.
+            </p>
+            <p>Esto permite reutilizar lógica compleja entre el Dashboard y los scripts de análisis.</p>
+            <ul>
+                <li><code>profiling.py</code>: Recuperación de datos contextuales para el análisis de IA.</li>
+                <li><code>graph.py</code>: Extracción de nodos y aristas optimizada para la visualización de redes (NetworkX/Agraph).</li>
+                <li><code>overview.py</code>: Cálculo de KPIs globales y series temporales para el cuadro de mando.</li>
+                <li><code>breach.py</code>: Consultas específicas para el módulo de monitorización defensiva.</li>
+            </ul>
+
+            <h2>5. Caché para Dashboard (<code>caching.py</code>)</h2>
+            <p>Capa de abstracción diseñada para <strong>Streamlit</strong>, enfocada en el rendimiento de lectura.</p>
+            <ul>
+                <li><strong>Integración con Pandas:</strong> Transforma los resultados de <code>psycopg</code> directamente en <code>pd.DataFrame</code>, gestionando los tipos de datos automáticamente.</li>
+                <li><strong>Estrategia de Caché:</strong> Implementa decoradores <code>@st.cache_data</code> con TTLs ajustados al caso de uso:
+                    <ul>
+                        <li>Datos analíticos (<code>read_sql</code>): TTL corto (30s) para reflejar cambios casi en tiempo real.</li>
+                        <li>Listas estáticas (<code>list_tokens</code>): TTL medio (60s) para selectores de interfaz.</li>
+                    </ul>
+                </li>
+            </ul>
+
+            <footer>
+                <p>© 2025 BotScape Project. Documentación generada para fines académicos y de investigación.</p>
+            </footer>
+
+        </div>
+        </main>
+
+    <script src="../js/sidebar.js"></script>
+    <script>
+        renderSidebar('../');
+    </script>
+</body>
+</html>

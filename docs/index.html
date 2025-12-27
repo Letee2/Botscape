@@ -1,0 +1,255 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+    <link rel="icon" href="media/favicon.ico" type="image/x-icon">
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>BotScape | Threat Intelligence</title>
+    <link rel="stylesheet" href="styles.css">
+       <script type="module">
+        import mermaid from 'https://cdn.jsdelivr.net/npm/mermaid@10/dist/mermaid.esm.min.mjs';
+        mermaid.initialize({ 
+            startOnLoad: true, 
+            theme: 'base',
+            securityLevel: 'loose',
+            themeVariables: {
+                // Se eliminan colores forzados, dejando defaults neutros
+                mainBkg: '#ffffff',
+                clusterBkg: '#fafafa'
+            }
+        });
+    </script>
+    <style>
+        /* Estilos de Tarjeta (Base Global) */
+        .doc-container {
+            background: #ffffff;
+            border-radius: 8px;
+            box-shadow: 0 1px 3px 0 rgba(60,64,67,0.3);
+            padding: 40px;
+            max-width: 1000px;
+            margin: 0 auto;
+        }
+
+        /* Ajustes de tipografía */
+        h1 { margin-top: 0; color: #202124; }
+        h2 { margin-top: 35px; border-bottom: 1px solid #dadce0; padding-bottom: 8px; color: #202124; }
+        p { line-height: 1.6; color: #5f6368; }
+
+        /* --- Componentes Específicos de la Portada --- */
+
+        /* Tarjeta de Enlace (Link Card) */
+        .link-card {
+            display: block;
+            background: #f8f9fa; /* Fondo ligeramente gris para contrastar con la tarjeta blanca */
+            border: 1px solid #dadce0;
+            border-left: 4px solid #1a73e8; /* Acento azul */
+            border-radius: 4px;
+            padding: 20px;
+            margin-top: 20px;
+            text-decoration: none;
+            transition: box-shadow 0.2s, transform 0.2s;
+        }
+        .link-card:hover {
+            box-shadow: 0 4px 8px rgba(60,64,67,0.15);
+            transform: translateY(-2px);
+            background: #ffffff;
+        }
+        .lc-title {
+            font-size: 18px;
+            font-weight: 600;
+            color: #1a73e8;
+            margin-bottom: 8px;
+        }
+        .lc-desc {
+            font-size: 14px;
+            color: #5f6368;
+            line-height: 1.5;
+        }
+        
+        /* Caja de Nota (Note Box) */
+        .note-box {
+            background-color: #fff8e1; /* Amarillo muy suave */
+            border-left: 4px solid #fbc02d; /* Amarillo oscuro */
+            padding: 15px;
+            border-radius: 4px;
+            font-size: 14px;
+            color: #5f6368;
+            margin-top: 25px;
+        }
+        .note-box strong {
+            color: #e37400;
+            display: block;
+            margin-bottom: 5px;
+        }
+
+        /* Contenedor de Medios (Imágenes) */
+        .media-container {
+            text-align: center; 
+            margin: 30px 0;
+            padding: 10px;
+            background: #fafafa;
+            border: 1px solid #eee;
+            border-radius: 8px;
+        }
+        .media-container img {
+            max-width: 100%;
+            height: auto;
+            border-radius: 4px;
+        }
+        .caption {
+            font-size: 13px;
+            color: #70757a;
+            margin-top: 10px;
+            font-style: italic;
+        }
+    </style>
+</head>
+<body>
+
+    <aside class="sidebar" id="sidebar-placeholder"></aside>
+
+    <main class="main-content">
+        <div class="doc-container">
+        
+            <h1>BotScape Project</h1>
+            <p style="font-size: 18px; color: #5f6368; margin-top: -10px; margin-bottom: 30px;">
+                Análisis de Amenazas y Trazabilidad Criminal en Telegram
+            </p>
+
+            <section id="intro">
+                <h2>El Origen</h2>
+                <p>
+    <strong>BotScape</strong> nace como una iniciativa de investigación aplicada tras un seminario impartido durante el <em>VII Diploma de Experto de Ingeniería Inversa e Inteligencia Malware</em> por Jose Luis Sánchez (joseliyo), titulado <em>“Seguimiento de Actores y Métodos de Exfiltración”</em>. Inspirado por las técnicas de interceptación de infraestructura C2 expuestas en dicho contexto académico (GSEC), el proyecto busca arrojar luz sobre el uso de la API de Telegram como vector de control por parte de actores criminales.
+</p>
+
+                <p>
+                    Lo que comenzó con un simple script de interceptación ("Listener") evolucionó rápidamente al observar el volumen y la complejidad de los datos exfiltrados. La necesidad de transformar logs crudos en inteligencia accionable impulsó el desarrollo de una arquitectura modular capaz de perfilar actores, entender intenciones y trazar la red operativa completa. 
+                </p>
+
+                <div class="note-box">
+                    <strong>⚠️ Nota:</strong>
+                    Este repositorio es el resultado de un proceso de investigación orgánico y rápido. La arquitectura refleja un enfoque de <em>"Move Fast and Break Things"</em>. Encontrarás componentes experimentales conviviendo con módulos más consolidados, y cierta deuda técnica que se está abordando actualmente. ¡Cualquier feedback es bienvenido!
+                </div>
+            </section>
+
+            <section id="architecture">
+                <h2>Arquitectura del Sistema</h2>
+                <p>
+                    BotScape ha madurado de un script monolítico a una plataforma de microservicios basada en Docker. Integra capacidades de ingesta asíncrona (Telethon), persistencia relacional robusta (PostgreSQL) y una capa de visualización interactiva.
+                </p>
+                <div class="mermaid">
+                %%{init: {'theme': 'base', 'themeVariables': { 'primaryColor': '#ffffff', 'edgeLabelBackground':'#ffffff', 'tertiaryColor': '#f4f4f4', 'fontFamily': 'arial'}}}%%
+                graph TD
+                    %% --- ESTILOS PERSONALIZADOS ---
+                    classDef cloud fill:#fff,stroke:#bdc3c7,stroke-width:1px,stroke-dasharray: 5 5;
+                    classDef docker fill:#e3f2fd,stroke:#1565c0,stroke-width:2px;
+                    classDef db fill:#263238,stroke:#333,color:#fff;
+                    classDef local fill:#fff3e0,stroke:#ef6c00,stroke-width:2px;
+                    classDef script fill:#f1f8e9,stroke:#558b2f,stroke-width:2px;
+
+                    %% --- 1. MUNDO EXTERIOR ---
+                    subgraph Cloud ["☁️ Internet / External APIs"]
+                        direction LR
+                        VT(VirusTotal API):::cloud
+                        TG(Telegram API):::cloud
+                    end
+
+                    %% --- 2. SERVIDOR ---
+                    subgraph Server ["🖥️ BotScape Server"]
+                        style Server fill:#fafafa,stroke:#ccc,stroke-width:1px
+                        
+                        Hunter([🕵️ Hunter Script]):::script
+
+                        subgraph Docker ["🐳 Docker Compose Stack"]
+                            style Docker fill:#fff,stroke:#2196f3,stroke-width:1px,stroke-dasharray: 3 3
+                            
+                            Listener[📡 Listener Service]:::docker
+                            LLM[🧠 LLM Service]:::docker
+                            DB[("🗄️ PostgreSQL")]:::db
+                        end
+                    end
+
+                    %% --- 3. ENTORNO LOCAL ---
+                    subgraph Local ["💻 Analyst Local Machine"]
+                        Dash[📊 Streamlit Dashboard]:::local
+                    end
+
+                    %% --- RELACIONES (FLECHAS) ---
+                    
+                    %% Hunter (Caza y guarda)
+                    Hunter -.->|Daily Hunt| VT
+                    Hunter -->|Inserts Bots| DB
+
+                    %% Listener (Escucha y guarda)
+                    Listener <-->|Traffic| TG
+                    Listener -->|Inserts Msgs| DB
+
+                    %% LLM (Procesa datos internos)
+                    LLM <-->|Enrichment| DB
+
+                    %% Dashboard (Lee datos remotamente)
+                    Dash -.->|Reads Data| DB
+
+                    %% Ajuste de layout invisible
+                    VT ~~~ TG
+            </div>
+            <div class="caption" style="text-align: center; font-style: italic; color: #666; margin-top: 20px;">
+                Figura 1: Arquitectura de componentes. El núcleo (Listener, IA, DB) corre containerizado, mientras que el análisis visual se ejecuta en local.
+            </div>
+            </section>
+
+            <section id="graphs">
+    <h2>El Poder de los Grafos</h2>
+    <p>
+        El punto de inflexión analítico fue la adopción de la <strong>Teoría de Grafos</strong>. Modelar la red como Nodos (Bots, Chats, Usuarios, Malware) y Aristas (Interacciones) nos permitió descubrir comunidades ocultas y patrones de comportamiento que eran invisibles en los logs secuenciales.
+    </p>
+    <p>
+        Esta aproximación topológica es la base para entender no solo <em>qué</em> está pasando, sino <em>quién</em> se relaciona con <em>quién</em> en el ecosistema criminal.
+    </p>
+    <p>
+        El informe de investigación realizado permite evidenciar el potencial del uso de grafos dentro del proyecto.
+    </p>
+
+    <a href="report.html" class="link-card">
+        <div class="lc-title">📄 Caso de Estudio: Informe sobre un Cluster a través de BotScape</div>
+        <div class="lc-desc">
+            Informe de inteligencia comprendiendo la estructura de una red masiva de exfiltración, identificando roles de actores y flujos de datos.
+        </div>
+    </a>
+</section>
+
+
+            <section id="ai-experiments">
+                <h2>Integración de IA (LLMs)</h2>
+                <p>
+                    El proyecto implementa modelos de lenguaje locales (LLMs) para realizar tareas de clasificación semántica. A pesar de las limitaciones de hardware local, estos modelos han demostrado ser eficaces para generar una "intuición" automática sobre el contenido, etiquetando intenciones sin intervención humana.
+                </p>
+            </section>
+
+            <section id="traceability">
+    <h2>Trazabilidad y próximos pasos</h2>
+    <p>
+        Un aspecto clave del proyecto ha sido la <strong>trazabilidad</strong>, orientada tanto a la identificación de la infraestructura externa utilizada por los actores como al análisis de las rutas de tráfico que siguen los datos exfiltrados en busca de sus puntos de venta.
+    </p>
+    <p>
+        Durante la investigación se intentaron establecer vinculaciones con mercados de la dark web y otras plataformas externas, sin resultados concluyentes, lo que sugiere un cambio de paradigma: <strong>los datos robados no necesitan abandonar Telegram para ser comercializados</strong>.
+    </p>
+    <p>
+        A partir de esta hipótesis, BotScape evoluciona hacia el estudio de la trazabilidad interna, empleando diagramas de flujo (Sankey) para visualizar cómo la información transita desde bots privados de recolección hacia canales dentro del propio ecosistema monitorizado.
+    </p>
+</section>
+
+
+            <footer style="margin-top: 50px; border-top: 1px solid #eee; padding-top: 20px; text-align: center; font-size: 12px; color: #9aa0a6;">
+                <p>© 2025 BotScape Project. Documentación generada para fines académicos y de investigación.</p>
+            </footer>
+
+        </div>
+        </main>
+
+    <script src="js/sidebar.js"></script>
+    <script>  
+        renderSidebar('./');
+    </script>
+</body>
+</html>

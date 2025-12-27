@@ -1,0 +1,218 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+    <link rel="icon" href="../media/favicon.ico" type="image/x-icon">
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Database Schema | BotScape Docs</title>
+    <link rel="stylesheet" href="../styles.css">
+
+    <style>
+        /* Estilos de Tarjeta (Base) */
+        .doc-container {
+            background: #ffffff;
+            border-radius: 8px;
+            box-shadow: 0 1px 3px 0 rgba(60,64,67,0.3);
+            padding: 40px; 
+            max-width: 1000px;
+            margin: 0 auto;
+        }
+
+        /* Ajustes de tipografía para la tarjeta */
+        h1 { margin-top: 0; }
+        hr { border: 0; border-top: 1px solid #dadce0; margin: 30px 0; }
+
+        /* Estilos para bloques de código y código inline */
+        code {
+            background-color: #f1f3f4;
+            padding: 2px 4px;
+            border-radius: 4px;
+            font-family: monospace;
+            font-size: 0.9em;
+            color: #c7254e;
+        }
+    </style>
+</head>
+<body>
+
+    <aside class="sidebar" id="sidebar-placeholder"></aside>
+
+    <main class="main-content">
+        <div class="doc-container">
+
+            <h1>Esquema de Base de Datos</h1>
+            <p>
+                El sistema utiliza <strong>PostgreSQL 17</strong>. El modelo de datos se divide en tablas transaccionales (almacenamiento de logs y entidades) y tablas agregadas (para consultas rápidas de métricas).
+            </p>
+
+            <hr>
+
+            <h2>1. Bots y Perfiles</h2>
+            <p>Gestión de los activos monitorizados y su clasificación.</p>
+
+            <h3><code>bots</code></h3>
+            <p>Tabla principal de inventario.</p>
+            <ul>
+                <li><strong>PK:</strong> <code>token</code> (Texto). El token de la API de Telegram.</li>
+                <li><strong>Columnas clave:</strong>
+                    <ul>
+                        <li><code>is_active</code>: Booleano. Controla si el listener debe procesar este bot.</li>
+                        <li><code>bot_id</code>: Entero (BigInt). Identificador único de usuario en Telegram.</li>
+                        <li><code>last_checked_utc</code>: Timestamp de la última verificación de estado.</li>
+                    </ul>
+                </li>
+            </ul>
+
+            <h3><code>bot_profiles</code></h3>
+            <p>Información generada por el módulo de análisis (LLM).</p>
+            <ul>
+                <li><strong>Relación:</strong> 1:1 con <code>bots</code>.</li>
+                <li><strong>Columnas clave:</strong>
+                    <ul>
+                        <li><code>actor_intent</code>: Clasificación del propósito del bot (ej. 'Stealer', 'Support').</li>
+                        <li><code>risk_level</code>: Nivel de riesgo asignado.</li>
+                        <li><code>detected_ttps</code>: Campo <code>JSONB</code> que contiene una lista de tácticas detectadas.</li>
+                    </ul>
+                </li>
+            </ul>
+
+            <h3><code>bot_tags</code> y <code>bot_tag_map</code></h3>
+            <p>Sistema de etiquetado.</p>
+            <ul>
+                <li>Relación N:M entre bots y etiquetas.</li>
+                <li>Las etiquetas se eliminan en cascada si se borra el bot asociado.</li>
+            </ul>
+
+            <hr>
+
+            <h2>2. Mensajería e Ingesta</h2>
+            <p>Almacenamiento de los datos interceptados.</p>
+
+            <h3><code>messages</code></h3>
+            <p>Registro de mensajes recibidos.</p>
+            <ul>
+                <li><strong>Restricción:</strong> <code>UNIQUE (token, message_id, date_utc)</code>. Evita la inserción de mensajes duplicados.</li>
+                <li><strong>Columnas clave:</strong>
+                    <ul>
+                        <li><code>text</code>: Contenido del mensaje.</li>
+                        <li><code>text_sha1</code>: Hash SHA1 del texto para agrupamiento y detección de duplicados.</li>
+                        <li><code>raw_json</code>: Payload original de Telegram en formato JSON.</li>
+                    </ul>
+                </li>
+            </ul>
+
+            <h3><code>entities</code></h3>
+            <p>Datos extraídos del texto de los mensajes (Regex/Parsers).</p>
+            <ul>
+                <li><strong>Tipos (etype):</strong> <code>email</code>, <code>crypto_wallet</code>, <code>url</code>, <code>domain</code>, <code>ip</code>.</li>
+                <li><strong>Restricción:</strong> <code>UNIQUE (message_pk, etype, value)</code>.</li>
+                <li>Incluye <code>context_snippet</code> para referencias.</li>
+            </ul>
+
+            <h3><code>attachments</code></h3>
+            <p>Metadatos de archivos adjuntos.</p>
+            <ul>
+                <li>Almacena ruta local, tamaño, tipo MIME y hash SHA256.</li>
+            </ul>
+
+            <hr>
+
+            <h2>3. Inteligencia y Malware</h2>
+            <p>Tablas relacionadas con la atribución de amenazas y análisis de binarios.</p>
+
+            <h3><code>samples_intelligence</code></h3>
+            <p>Registro de archivos de malware analizados.</p>
+            <ul>
+                <li><strong>PK:</strong> <code>sha256</code>.</li>
+                <li><strong>Columnas clave:</strong>
+                    <ul>
+                        <li><code>imphash</code>, <code>ssdeep</code>: Hashes para análisis de similitud.</li>
+                        <li><code>origin_url</code>: URL de donde se obtuvo la muestra (si está disponible).</li>
+                    </ul>
+                </li>
+            </ul>
+
+            <h3><code>hash_origin</code></h3>
+            <p>Tabla de enlace (Join Table).</p>
+            <ul>
+                <li>Vincula un <code>token</code> de bot con el hash de malware (<code>sample_sha256</code>) que lo contenía. Permite trazar el origen del bot.</li>
+            </ul>
+
+            <h3><code>malware_similarity_links</code></h3>
+            <p>Resultados de comparación de similitud (Fuzzy Hashing).</p>
+            <ul>
+                <li>Registra pares de hashes (<code>sha256_a</code>, <code>sha256_b</code>) y su puntuación de similitud.</li>
+            </ul>
+
+            <hr>
+
+            <h2>4. Red y Operadores</h2>
+            <p>Estructuras para el análisis de grafos y atribución.</p>
+            
+            <h3><code>social_identities</code> y <code>social_graph_edges</code></h3>
+            <p>Grafo de interacciones en Telegram.</p>
+            <ul>
+                <li><strong>Nodos:</strong> Usuarios o canales.</li>
+                <li><strong>Aristas:</strong> Tipos de interacción (ej. <code>FORWARD_FROM</code>).</li>
+            </ul>
+
+            <h3><code>operator_profiles</code></h3>
+            <p>Registro de actores identificados.</p>
+            <ul>
+                <li>Roles asignados: <code>COMMANDER</code> (envía comandos) o <code>COLLECTOR</code> (recibe datos).</li>
+                <li>Estadísticas de actividad por actor.</li>
+            </ul>
+
+            <h3><code>infrastructure_intelligence</code></h3>
+            <p>Datos de red externos.</p>
+            <ul>
+                <li>Almacena IPs, Dominios, ASNs y datos de geolocalización vinculados a los bots u operadores.</li>
+            </ul>
+
+            <h3><code>intel_traffic_flow</code></h3>
+            <p>Tabla de agregación de tráfico.</p>
+            <ul>
+                <li>Almacena volúmenes de mensajes entre entidades.</li>
+                <li>Clasifica el tráfico en <code>INBOUND</code>, <code>OUTBOUND</code> y <code>LATERAL</code>.</li>
+            </ul>
+
+            <hr>
+
+            <h2>5. Métricas Agregadas</h2>
+            <p>Tablas pre-calculadas para optimizar el rendimiento de las consultas del dashboard.</p>
+            <ul>
+                <li><code>metrics_bot_daily</code>: Conteo diario de mensajes y entidades por bot.</li>
+                <li><code>metrics_language_daily</code>: Conteo por idioma detectado.</li>
+                <li><code>metrics_word_daily</code>: Frecuencia de palabras.</li>
+                <li><code>metrics_text_templates</code>: Agrupación de mensajes idénticos (por hash) para detección de spam/campañas.</li>
+            </ul>
+
+            <hr>
+
+            <h2>6. Sistema</h2>
+            
+            <h3><code>monitored_assets</code></h3>
+            <p>Lista de activos bajo vigilancia (Watchlist).</p>
+            <ul>
+                <li>Elementos (emails, dominios) que generan alerta si aparecen en los mensajes interceptados.</li>
+            </ul>
+
+            <h3><code>system_health</code></h3>
+            <p>Métricas operativas.</p>
+            <ul>
+                <li>Espacio en disco y uso de recursos del servidor.</li>
+            </ul>
+
+            <footer>
+                <p>© 2025 BotScape Project. Documentación generada para fines académicos y de investigación.</p>
+            </footer>
+
+        </div>
+        </main>
+
+    <script src="../js/sidebar.js"></script>
+    <script>
+        renderSidebar('../');
+    </script>
+</body>
+</html>

@@ -1,0 +1,52 @@
+# === Python ===
+# Virtual environments
+.venv/
+venv/
+env/
+
+# Bytecode compilado
+__pycache__/
+*.pyc
+
+# === Bases de Datos ===
+# La base de datos principal y cualquier backup
+*.sqlite
+*.sqlite3
+*.sqlite3-shm
+*.sqlite3-wal
+*.db
+*.db3
+
+# === Datos de Runtime y Backups ===
+# Carpetas de datos generados
+media/
+sessions/
+backups
+tmp_delete
+lib
+
+# === Ficheros de Salida y Logs ===
+# Ficheros de datos generados por los scripts
+*.csv
+*.log
+*.json
+
+# Ficheros de entrada/salida de tokens y hashes
+# (Estos son datos, no código fuente)
+*.txt
+
+# Excepción: SÍ queremos incluir requirements.txt
+!requirements.txt
+# Excepción: SÍ queremos incluir los hashes de ejemplo si los creas
+# !hashes_retrohunt.example.txt
+
+# === Ficheros de Secretos ===
+# El fichero de entorno local
+.env
+
+
+
+# === IDE/OS ===
+.vscode/
+.idea/
+.DS_Store

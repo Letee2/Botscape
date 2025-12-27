@@ -1,0 +1,194 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+    <link rel="icon" href="../media/favicon.ico" type="image/x-icon">
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Enrichment & Scripts | BotScape Docs</title>
+    <link rel="stylesheet" href="../styles.css">
+    
+    <script type="module">
+        import mermaid from 'https://cdn.jsdelivr.net/npm/mermaid@10/dist/mermaid.esm.min.mjs';
+        mermaid.initialize({ 
+            startOnLoad: true, 
+            theme: 'base',
+            securityLevel: 'loose',
+            themeVariables: {
+                mainBkg: '#ffffff',
+                clusterBkg: '#fafafa'
+            }
+        });
+    </script>
+
+    <style>
+        /* --- LAYOUT ESTRUCTURAL ÚNICAMENTE --- */
+        .doc-container {
+            background: #ffffff;
+            border-radius: 8px;
+            box-shadow: 0 1px 3px 0 rgba(60,64,67,0.3);
+            padding: 40px; 
+            max-width: 1000px;
+            margin: 0 auto;
+        }
+
+        h1 { margin: 0 0 5px 0; }
+        h2 { margin-top: 35px; border-bottom: 1px solid #dadce0; padding-bottom: 8px; }
+        
+        .meta-header {
+            display: flex; justify-content: space-between; align-items: flex-end;
+            margin-bottom: 30px; border-bottom: 1px solid #dadce0; padding-bottom: 20px;
+        }
+        
+        .version-badge {
+            background-color: #f1f3f4; 
+            color: #5f6368;
+            padding: 4px 12px; border-radius: 16px; font-weight: 600; font-size: 12px;
+            border: 1px solid #dadce0;
+        }
+
+        .note-box {
+            background-color: #f8f9fa; 
+            border-left: 4px solid #5f6368;
+            padding: 15px; margin: 20px 0; border-radius: 4px;
+            font-size: 14px; color: #3c4043;
+        }
+        .note-title { font-weight: bold; display: block; margin-bottom: 5px; }
+
+        /* Variación para notas técnicas específicas */
+        .tech-note {
+            background-color: #f1f3f4;
+            border-left: 4px solid #1a73e8;
+            margin-top: 10px;
+        }
+
+        .script-grid {
+            display: grid; grid-template-columns: repeat(auto-fill, minmax(280px, 1fr)); gap: 15px; margin-top: 20px;
+        }
+        .script-card {
+            border: 1px solid #dadce0; border-radius: 6px; padding: 15px;
+            background: #ffffff;
+        }
+        .script-name { font-family: monospace; font-weight: bold; color: #202124; }
+        .script-desc { font-size: 13px; color: #5f6368; margin-top: 5px; }
+
+        .mermaid {
+            display: flex;
+            justify-content: center;
+            margin: 30px 0;
+        }
+    </style>
+</head>
+<body>
+
+     <aside class="sidebar" id="sidebar-placeholder"></aside>
+
+    <main class="main-content">
+        <div class="doc-container">
+            
+            <div class="note-box">
+                <span class="note-title">💡 Nota:</span>
+                Esta sección del código (especialmente la carpeta <code>scripts/</code>) refleja la naturaleza del proyecto. A diferencia del núcleo (Listener), estos componentes han evolucionado de forma flexible para responder a nuevas incógnitas de Threat Intelligence conforme surgían. Muchos scripts aquí son "Proof of Concepts" que luego se integran como servicios estables.
+            </div>
+
+            <section>
+                <h2>1. Servicios de Enriquecimiento</h2>
+                <p>
+                    Ubicados en <code>botscape/services/enrichment/</code>, estos módulos no recolectan datos (eso lo hace el Listener), sino que generan <strong>contexto</strong>. Son consumidos tanto por los scripts batch como por el Dashboard en tiempo real.
+                </p>
+
+                <div class="mermaid">
+                    graph LR
+                        Raw["Raw Data<br/>(Messages/Files)"] --> EnrichLayer
+                        
+                        subgraph "Enrichment Services"
+                            direction TB
+                            Net["Network Profiler<br/>IP to ASN/Geo"]
+                            Sim["Similarity Engine<br/>SSDeep/ImpHash"]
+                            Foren["Forensics<br/>File Analysis"]
+                            Graph["Topology Service<br/>Node Links"]
+                        end
+                        
+                        EnrichLayer --> Net
+                        EnrichLayer --> Sim
+                        EnrichLayer --> Foren
+                        EnrichLayer --> Graph
+                        
+                        Net -->|Infrastructure| DB[("PostgreSQL")]
+                        Sim -->|Campaign Links| DB
+                        Foren -->|Artifacts| DB
+                        Graph -->|Visuals| Dashboard
+                </div>
+
+                <div class="script-grid">
+                    <div class="script-card" style="grid-column: span 2;">
+                        <div class="script-name">network_profiler.py</div>
+                        <div class="script-desc">Convierte IPs y Dominios (C2) en inteligencia accionable: ASN, País, ISP y Geolocalización.</div>
+                        
+                        <div class="note-box tech-note">
+                            <span class="note-title">🔍 Clasificación de Infraestructura:</span>
+                            El profiler distingue automáticamente entre <strong>C2 Webhooks</strong> (Backend de exfiltración obtenido vía API) y <strong>Orígenes In-The-Wild</strong> (Vectores de infección extraídos de <code>samples_intelligence</code> tras detectar archivos maliciosos vinculados).
+                        </div>
+                    </div>
+                    <div class="script-card">
+                        <div class="script-name">similarity_engine.py</div>
+                        <div class="script-desc">Motor de correlación de malware. Usa Fuzzy Hashing (SSDeep) para detectar variantes de la misma familia.</div>
+                    </div>
+                    <div class="script-card">
+                        <div class="script-name">traffic_aggregator.py</div>
+                        <div class="script-desc">Calcula flujos de tráfico (Inbound/Outbound) agregados por Actor para los diagramas Sankey.</div>
+                    </div>
+                    <div class="script-card">
+                        <div class="script-name">forensics.py</div>
+                        <div class="script-desc">Analiza el contenido de los mensajes para clasificar archivos adjuntos y extraer metadatos ocultos.</div>
+                    </div>
+                </div>
+            </section>
+
+            <section>
+                <h2>2. Scripts Operativos</h2>
+                <p>
+                    La carpeta <code>botscape/scripts/</code> actúa como una caja de herramientas para el mantenimiento, la migración y tareas puntuales de análisis avanzado que requieren ejecución manual o programada (Cron).
+                </p>
+
+                <h3>Mantenimiento y Salud</h3>
+                <div class="script-grid">
+                    <div class="script-card">
+                        <div class="script-name">watchdog.py</div>
+                        <div class="script-desc">Monitor externo ("Perro Guardián"). Reinicia el contenedor Docker si detecta silencio en la ingesta > 30 min.</div>
+                    </div>
+                    <div class="script-card">
+                        <div class="script-name">janitor.py</div>
+                        <div class="script-desc">Limpieza de disco. Elimina sesiones corruptas, temporales antiguos y optimiza la BBDD (VACUUM).</div>
+                    </div>
+                    <div class="script-card">
+                        <div class="script-name">health_reporter.py</div>
+                        <div class="script-desc">Genera métricas de sistema (Disco, CPU, DB Size) para el panel de administración.</div>
+                    </div>
+                </div>
+
+                <h3>Análisis e Inteligencia</h3>
+                <div class="script-grid">
+                    <div class="script-card">
+                        <div class="script-name">profiler.py</div>
+                        <div class="script-desc">Trigger manual para el análisis LLM. Fuerza el re-perfilado de bots basado en nuevos mensajes.</div>
+                    </div>
+                    <div class="script-card">
+                        <div class="script-name">hunter.py</div>
+                        <div class="script-desc">Script principal de búsqueda ofensiva en VirusTotal (Documentado en su propia sección).</div>
+                    </div>
+                </div>
+            </section>
+
+            <div style="margin-top: 50px; text-align: center; color: #999; font-size: 12px; border-top: 1px solid #eee; padding-top: 20px;">
+                BotScape Research Labs &bull; Internal Documentation
+            </div>
+
+        </div>
+    </main>
+
+    <script src="../js/sidebar.js"></script>
+    <script>
+        renderSidebar('../');
+    </script>
+</body>
+</html>

@@ -1,0 +1,165 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+    <link rel="icon" href="../media/favicon.ico" type="image/x-icon">
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Listener Engine | BotScape Docs</title>
+    <link rel="stylesheet" href="../styles.css">
+    
+    <script type="module">
+        import mermaid from 'https://cdn.jsdelivr.net/npm/mermaid@10/dist/mermaid.esm.min.mjs';
+        mermaid.initialize({ 
+            startOnLoad: true, 
+            theme: 'base', // Cambiado a base para que se vea bien en la tarjeta blanca
+            securityLevel: 'loose',
+            themeVariables: {
+                mainBkg: '#ffffff',
+                clusterBkg: '#fafafa'
+            }
+        });
+    </script>
+
+    <style>
+        /* Estilos de Tarjeta Centrada */
+        .doc-container {
+            background: #ffffff;
+            border-radius: 8px;
+            box-shadow: 0 1px 3px 0 rgba(60,64,67,0.3);
+            padding: 40px; 
+            max-width: 1000px;
+            margin: 0 auto;
+        }
+
+        /* Ajuste para centrar el diagrama Mermaid */
+        .mermaid {
+            display: flex;
+            justify-content: center;
+            margin: 30px 0;
+        }
+
+        .caption {
+            text-align: center;
+            font-size: 0.9rem;
+            color: #5f6368;
+            margin-top: -10px;
+            margin-bottom: 30px;
+        }
+
+        /* Pequeños ajustes de tipografía para la tarjeta */
+        h1 { margin-top: 0; }
+        hr { border: 0; border-top: 1px solid #dadce0; margin: 30px 0; }
+    </style>
+</head>
+<body>
+
+    <aside class="sidebar" id="sidebar-placeholder"></aside>
+
+    <main class="main-content">
+        <div class="doc-container">
+            <h1>Listener Service</h1>
+            <p>
+                El <strong>Listener</strong> es el componente de interceptación en tiempo real. Utiliza la librería <code>Telethon</code> (MTProto) sobre <code>asyncio</code> para gestionar conexiones concurrentes a la API de Telegram. Su diseño prioriza la estabilidad de la conexión y la separación de responsabilidades entre la recepción de datos y su procesamiento.
+            </p>
+
+            <hr>
+
+            <h2>Arquitectura de Flujo de Datos</h2>
+            <p>
+                El sistema implementa un patrón <strong>Producer-Consumer</strong> utilizando colas en memoria (<code>asyncio.Queue</code>) para evitar que la latencia de base de datos o red bloquee el bucle de eventos principal.
+            </p>
+            
+            <div class="mermaid">
+                graph TD
+                    subgraph "Telegram Cloud"
+                        API[Telegram API]
+                    end
+
+                    subgraph "Listener Service (AsyncIO Loop)"
+                        Refresher[Refresher Loop] -->|Hot Load| ClientMgr[Client Manager]
+                        API <-->|Long Polling| ClientMgr
+                        
+                        ClientMgr -->|NewMessage Event| Handlers[Message Handlers]
+                        
+                        Handlers -->|Raw Payload| IngestQ(INGEST_QUEUE)
+                        Handlers -->|Formatted Msg| SendQ(SEND_QUEUE)
+                        
+                        subgraph "Consumers / Workers"
+                            IngestQ --> IngestWorker[Ingest Worker]
+                            SendQ --> Bridge[Bridge Worker]
+                            Bridge -->|Throttled| Forwarder[Forwarder Sender]
+                        end
+                    end
+
+                    subgraph "Persistence & Alerting"
+                        IngestWorker -->|Batch Write| DB[(PostgreSQL)]
+                        Forwarder -->|Relay| Channel[Canal de Análisis]
+                    end
+
+                    Watchdog[External Watchdog] -.->|Restart if Silent| ClientMgr
+
+                    style API fill:#2a2a2a,stroke:#333,color:#fff
+                    style DB fill:#2a2a2a,stroke:#333,color:#fff
+                    style Channel fill:#2a2a2a,stroke:#333,color:#fff
+            </div>
+            <p class="caption">Figura 1: Diagrama de flujo de datos y separación de colas.</p>
+
+            <hr>
+
+            <h2>Componentes Principales</h2>
+
+            <h3>1. Orquestación (<code>main.py</code>)</h3>
+            <p>Punto de entrada que gestiona el ciclo de vida de los workers y clientes:</p>
+            <ul>
+                <li><strong>OpSec Check:</strong> Valida la anonimidad de la conexión antes de iniciar (Kill Switch).</li>
+                <li><strong>Gestión de Colas:</strong> Inicializa <code>INGEST_QUEUE</code> y <code>SEND_QUEUE</code>.</li>
+                <li><strong>Forwarder Maestro:</strong> Instancia el cliente especial encargado de rebotar los mensajes al canal de los analistas.</li>
+            </ul>
+
+            <h3>2. Gestión de Sesiones (<code>client_manager.py</code>)</h3>
+            <p>Administra el enjambre de clientes de bots:</p>
+            <ul>
+                <li><strong>Persistencia:</strong> Utiliza archivos <code>.session</code> (StringSession) almacenados en disco para mantener la autenticación entre reinicios.</li>
+                <li><strong>Refresher Loop:</strong> Tarea en segundo plano que consulta la tabla <code>bots</code> cada 10 minutos. Si detecta nuevos tokens añadidos, levanta nuevas instancias de cliente sin detener el servicio ("Hot-loading").</li>
+                <li><strong>Depuración Automática:</strong> Captura errores <code>AccessTokenExpiredError</code> y marca automáticamente los bots revocados como inactivos en la base de datos.</li>
+            </ul>
+
+            <h3>3. Lógica de Interceptación (<code>handlers.py</code>)</h3>
+            <p>Procesa cada evento <code>NewMessage</code> entrante:</p>
+            <ul>
+                <li><strong>Clasificación de Contexto:</strong> Distingue entre mensajes de chat privado (potencial comunicación con el operador) y mensajes de canales/grupos (infraestructura de difusión).</li>
+                <li><strong>Grafo Social:</strong> Inspecciona cabeceras <code>fwd_from</code> para extraer identidades de usuarios o canales ocultos.</li>
+                <li><strong>Descarga Segura:</strong> Gestiona la descarga de adjuntos a la carpeta local <code>media/</code>, asociando el path al registro del mensaje.</li>
+            </ul>
+
+            <h3>4. Motor de Ingesta (<code>ingest/worker.py</code>)</h3>
+            <p>Worker dedicado a la escritura en base de datos:</p>
+            <ul>
+                <li><strong>Firma Estructural:</strong> Genera un hash SHA1 basado en la estructura del mensaje (eliminando datos variables) para agrupar alertas repetitivas en el dashboard.</li>
+                <li><strong>Transaccionalidad:</strong> Inserta el mensaje, entidades y metadatos de adjuntos en una única transacción atómica para garantizar consistencia.</li>
+            </ul>
+
+            <h2>Mecanismos de Robustez</h2>
+            
+            <h3>Rate Limiting (ForwarderSender)</h3>
+            <p>
+                Para evitar que Telegram bloquee la cuenta de análisis por <em>FloodWait</em>, el sistema utiliza un <code>Bridge Worker</code> y una clase <code>ForwarderSender</code> que implementa un ritmo de envío controlado (ej. 1.5 mensajes/segundo).
+            </p>
+
+            <h3>Watchdog Externo (<code>watchdog.py</code>)</h3>
+            <p>
+                Script independiente ejecutado por el sistema operativo (Cron/Systemd). Monitoriza la tabla <code>messages</code>; si no detecta actividad de ingesta en los últimos 30 minutos, asume un fallo silencioso de conexión y fuerza el reinicio del contenedor.
+            </p>
+
+            <footer>
+                <p>© 2025 BotScape Project. Documentación generada para fines académicos y de investigación.</p>
+            </footer>
+        </div>
+    </main>
+
+    <script src="../js/sidebar.js"></script>
+    <script>
+        renderSidebar('../');
+    </script>
+</body>
+</html>

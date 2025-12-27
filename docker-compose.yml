@@ -1,0 +1,95 @@
+version: '3.8'
+
+services:
+  postgres:
+    image: postgres:17-alpine
+    container_name: botscape_database
+    restart: always
+    environment:
+      POSTGRES_DB: ${DB_NAME}
+      POSTGRES_USER: ${DB_USER}
+      POSTGRES_PASSWORD: ${DB_PASS}
+    ports:
+      - "5432:5432"
+    volumes:
+      - pg_data:/var/lib/postgresql/data
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U ${DB_USER} -d ${DB_NAME}"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+
+  # --- SERVICIO LLM (OLLAMA) ---
+  # En un despliegue híbrido donde el Listener está en una RPi, 
+  # puedes comentar este servicio o no iniciarlo, y apuntar al PC remoto.
+  ollama:
+    image: ollama/ollama:latest
+    container_name: botscape_ollama
+    restart: always
+    ports:
+      # Exponemos a 0.0.0.0 para permitir que otros nodos (RPi) conecten si este es el nodo GPU.
+      # ¡IMPORTANTE OPSEC!: Si expones esto, usa VPN (Tailscale/Wireguard) o Firewall.
+      - "0.0.0.0:11434:11434"
+    volumes:
+      - ollama_data:/root/.ollama
+    # Soporte GPU Nvidia
+    deploy:
+      resources:
+        reservations:
+          devices:
+            - driver: nvidia
+              count: 1
+              capabilities: [gpu]
+
+  bootstrapper:
+    build:
+      context: .
+      dockerfile: Dockerfile
+    command: python -m botscape.scripts.bootstrap_db
+    environment:
+      DB_HOST: postgres
+      DB_PORT: 5432
+      DB_NAME: ${DB_NAME}
+      DB_USER: ${DB_USER}
+      DB_PASS: ${DB_PASS}
+    depends_on:
+      postgres:
+        condition: service_healthy
+
+  listener:
+    build:
+      context: .
+      dockerfile: Dockerfile
+    container_name: botscape_listener
+    command: python -m botscape.services.listener.main
+    restart: always
+    environment:
+      DB_HOST: postgres
+      DB_PORT: 5432
+      OLLAMA_HOST: ${OLLAMA_HOST:-http://ollama:11434}
+      
+      DB_NAME: ${DB_NAME}
+      DB_USER: ${DB_USER}
+      DB_PASS: ${DB_PASS}
+      VT_API_KEY: ${VT_API_KEY}
+      TELEGRAM_API_ID: ${TELEGRAM_API_ID}
+      TELEGRAM_API_HASH: ${TELEGRAM_API_HASH}
+      FORWARDER_BOT_TOKEN: ${FORWARDER_BOT_TOKEN}
+      TARGET_CHANNEL: ${TARGET_CHANNEL}
+    volumes:
+      - .:/app
+      - ./media:/app/media
+      - ./sessions:/app/sessions
+      - ./backups:/app/backups
+    depends_on:
+      bootstrapper:
+        condition: service_completed_successfully
+    healthcheck:
+      test: ["CMD-SHELL", "pgrep -f 'botscape.services.listener.main' || exit 1"]
+      interval: 1m
+      timeout: 5s
+      retries: 3
+
+volumes:
+  pg_data:
+  ollama_data:

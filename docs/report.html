@@ -1,0 +1,523 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+    <link rel="icon" href="media/favicon.ico" type="image/x-icon">
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Cluster Report</title>
+    
+    <link rel="stylesheet" href="styles.css">
+
+    <style>
+        /* --- Estilos Base de Documentación (Card Layout) --- */
+        .doc-container {
+            background: #ffffff;
+            border-radius: 8px;
+            box-shadow: 0 1px 3px 0 rgba(60,64,67,0.3);
+            padding: 50px; /* Un poco más de padding para este reporte */
+            max-width: 1000px;
+            margin: 0 auto;
+        }
+
+        /* --- Componentes Específicos del Informe --- */
+        
+        /* Badge TLP */
+        .meta-header { 
+            display: flex; justify-content: space-between; align-items: flex-end; 
+            margin-bottom: 40px; border-bottom: 1px solid #dadce0; padding-bottom: 20px; 
+        }
+        .tlp-badge { 
+            background-color: #fce8e6; color: #c5221f; 
+            padding: 4px 12px; border-radius: 16px; 
+            font-weight: 600; font-size: 12px; letter-spacing: 0.5px; 
+            border: 1px solid #f6aea9;
+        }
+
+        /* Stats Grid (Vital Signs) */
+        .stats-row { 
+            display: grid; grid-template-columns: repeat(auto-fit, minmax(150px, 1fr)); 
+            gap: 20px; margin: 30px 0; 
+        }
+        .stat-box { 
+            background: #f8f9fa; /* Fondo gris muy suave para contrastar con la tarjeta blanca */
+            border: 1px solid #e0e0e0; 
+            padding: 20px; border-radius: 8px; 
+            text-align: center; 
+        }
+        .stat-val { 
+            font-size: 28px; font-weight: 600; color: #1a73e8; 
+            display: block; margin-bottom: 5px;
+        }
+        .stat-lbl { 
+            font-size: 11px; text-transform: uppercase; color: #5f6368; 
+            font-weight: 700; letter-spacing: 0.5px; 
+        }
+
+        /* Contenedores de Imágenes y Gráficos */
+        .chart-container {
+            background-color: #ffffff; 
+            border: 1px solid #f1f3f4;
+            border-radius: 8px; 
+            width: 100%; 
+            padding: 10px;
+            display: flex; align-items: center; justify-content: center;
+            margin: 20px 0 10px 0; 
+            overflow: hidden; 
+            box-shadow: 0 2px 6px rgba(0,0,0,0.05);
+        }
+        .chart-container img { 
+            max-width: 100%; height: auto; 
+            border-radius: 4px; 
+        }
+        
+        /* Iframes interactivos (generalmente oscuros) */
+        .iframe-wrapper {
+            border-radius: 8px;
+            overflow: hidden;
+            border: 1px solid #3c4043; /* Borde oscuro para enmarcar el contenido negro */
+            margin-bottom: 10px;
+            box-shadow: 0 4px 12px rgba(0,0,0,0.15);
+        }
+        .interactive-frame { 
+            padding: 0; border: none; 
+            background: #050505; /* Fondo oscuro por defecto para visualizaciones de grafos */
+            width: 100%; height: 750px; 
+            display: block;
+        }
+
+        /* Layout de 2 columnas para imágenes */
+        .grid-2 { 
+            display: grid; grid-template-columns: 1fr 1fr; gap: 20px; margin-top: 20px; 
+        }
+        @media (max-width: 768px) { .grid-2 { grid-template-columns: 1fr; } }
+
+        /* Cajas de Evidencia (Estilo Terminal) */
+        .evidence-box {
+            background-color: #263238; color: #eceff1;
+            padding: 15px; border-radius: 6px; 
+            font-family: 'Consolas', 'Monaco', monospace;
+            font-size: 12px; line-height: 1.5;
+            margin: 15px 0; 
+            border-left: 4px solid #ff7043; /* Naranja rojizo */
+            white-space: pre-wrap; overflow-x: auto;
+            box-shadow: inset 0 0 10px rgba(0,0,0,0.2);
+        }
+        .evidence-label { 
+            color: #ffab91; font-weight: bold; font-size: 11px; 
+            text-transform: uppercase; display: block; margin-bottom: 8px; 
+            border-bottom: 1px solid #455a64; padding-bottom: 4px;
+        }
+
+        /* Tabla de Datos */
+        .data-table { 
+            width: 100%; border-collapse: collapse; font-size: 13px; 
+            margin: 20px 0; border: 1px solid #e0e0e0; 
+        }
+        .data-table th { 
+            text-align: left; padding: 12px; 
+            background: #f1f3f4; 
+            border-bottom: 2px solid #e0e0e0; 
+            color: #202124; font-weight: 600; 
+        }
+        .data-table td { 
+            padding: 10px 12px; border-bottom: 1px solid #f1f3f4; 
+            color: #3c4043; 
+        }
+        
+        /* Tags de la tabla */
+        .tag-dominant { 
+            background: #fce8e6; color: #c5221f; 
+            padding: 2px 8px; border-radius: 12px; font-weight: 600; font-size: 11px; border: 1px solid #f6aea9;
+        }
+        .tag-transversal { 
+            background: #e6f4ea; color: #137333; 
+            padding: 2px 8px; border-radius: 12px; font-weight: 600; font-size: 11px; border: 1px solid #ceead6;
+        }
+        .tag-local { 
+            background: #fef7e0; color: #b06000; 
+            padding: 2px 8px; border-radius: 12px; font-weight: 600; font-size: 11px; border: 1px solid #feefc3;
+        }
+
+        /* Insights Box (Notas Analíticas) */
+        .insight-box {
+            background-color: #f8f9fa; 
+            border-left: 4px solid #1a73e8; /* Azul estándar */
+            padding: 20px; margin: 25px 0; 
+            color: #3c4043; font-size: 14px; 
+            border-radius: 0 4px 4px 0;
+        }
+
+        /* Estilos de Texto */
+        h1 { margin: 0; color: #202124; font-size: 28px; }
+        h2 { margin-top: 40px; border-bottom: 1px solid #dadce0; padding-bottom: 8px; color: #202124; font-size: 22px;}
+        h3 { margin-top: 30px; margin-bottom: 10px; color: #202124; font-size: 18px; font-weight: 600; }
+        p { line-height: 1.6; color: #5f6368; }
+        .caption { font-size: 13px; color: #70757a; text-align: center; margin-top: 5px; margin-bottom: 25px; font-style: italic; }
+
+    </style>
+</head>
+<body>
+
+    <aside class="sidebar" id="sidebar-placeholder"></aside>
+
+    <main class="main-content">
+        <div class="doc-container">
+        
+            <div class="meta-header">
+                <div>
+                    <h1>Investigación: Entendiendo un Cluster</h1>
+                    <div style="font-size:14px; color:#5f6368; margin-top: 5px;">Análisis de Ecosistema &bull; <strong>BotScape</strong></div>
+                </div>
+            </div>
+
+            <section>
+                <h2>1. El Fenómeno de la Centralización</h2>
+                <p>
+                    Desde el comienzo de la monitorización de bots en el proyecto, se observó la aparición de un
+                    <strong>cluster masivo</strong> que se diferencia claramente del resto. Gran parte de las implementaciones que hay en el proyecto surgen como herramientas de respuesta
+                    a las incógnitas que aparecen al observar este cluster. En este documento, intentando ser breve y omitir los detalles técnicos y herramientas secundarias de BotScape, se hará un análisis de este fenómeno en profundidad.
+                </p>
+                <div class="chart-container">
+                    <img src="media/ecosistema-global.png" alt="Grafo Global">
+                </div>
+                <div class="caption">Fig 1. Vista global del ecosistema y el cluster central.</div>
+            </section>
+
+            <section>
+    <h2>2. Métricas de Evolución</h2>
+    <p>
+       Es interesante, antes de lanzarnos al análisis profundo, hacer un repaso de las métricas principales que conocemos del cluster. Se aprovecha también para hacer un inciso que debe tenerse en cuenta 
+                    a lo largo del informe: Estamos viendo solo lo que se ha podido monitorizar, y esto nos puede llevar a conclusiones imprecisas, puesto que no conocemos la imagen completa.
+                </p>
+
+    <div class="stats-row">
+        <div class="stat-box" style="border-top: 3px solid #1a73e8;">
+            <span class="stat-val">295</span>
+            <span class="stat-lbl">Bots en Cluster</span>
+        </div>
+        <div class="stat-box" style="border-top: 3px solid #5f6368;">
+            <span class="stat-val">957</span>
+            <span class="stat-lbl">Hashes Vinculados</span>
+        </div>
+        <div class="stat-box" style="border-top: 3px solid #d93025;">
+            <span class="stat-val">638</span>
+            <span class="stat-lbl">Canales de Comunicación</span>
+        </div>
+    </div>
+
+   <div style="display: flex; justify-content: center; margin: 30px 0;">
+        <div class="chart-container" style="background-color: #0a192f; border: none; padding: 15px; box-shadow: 0 8px 24px rgba(2, 12, 27, 0.5); max-width: 800px; width: 90%;">
+            <img src="media/cluster_evolution_dominance.png" alt="Evolución Temporal del Cluster" style="width: 100%; border-radius: 0;">
+        </div>
+    </div>
+    <div class="caption">
+        Fig 2. Análisis de Dominancia.
+    </div>
+</section>
+
+            <section>
+                <h2>3. Deconstrucción: Detección de Comunidades</h2>
+                <p>
+                    El primer paso para poder tratar con este cluster de forma inteligente es encontrar una forma de subdividirlo. Uno puede analizar los bots uno a uno y observar 
+                    las enormes diferencias que existen a priori, planteando la duda: ¿cómo es posible que este cluster esté unido?
+                </p>
+                <p>
+                    Aplicando el algoritmo de <strong>Louvain</strong>, hemos particionado el grafo para dejar de ver un bloque homogéneo.
+                    El estudio manual de los bots más influyentes dentro de estas comunidades ha revelado patrones interesantes y hemos podido descubrir campañas muy distintas que, por algún motivo, pertenecían igualmente a este cluster.
+                </p>
+                
+                <div class="insight-box" style="border-left-color: #5f6368; background-color: #f1f3f4;">
+                    <strong>🧠 Fundamento Matemático (Louvain)</strong><br>
+                    Matemáticamente, el algoritmo de Louvain funciona mediante la optimización de la <strong>Modularidad (Q)</strong>, un valor escalar que cuantifica la densidad de enlaces dentro de las comunidades en comparación con los enlaces entre ellas. El proceso es heurístico e iterativo, operando en dos fases repetitivas: primero, la <strong>optimización local</strong>, donde cada nodo se mueve a la comunidad de sus vecinos si esto incrementa la modularidad global; y segundo, la <strong>agregación</strong>, donde se construye una nueva red cuyos nodos son las comunidades encontradas. Esto nos permite detectar estructuras jerárquicas y desenmarañar la "bola de pelo" (<em>hairball</em>) inicial en subgrupos funcionales coherentes.
+                </div>
+
+                <div class="grid-2">
+                    <div>
+                        <div class="chart-container"><img src="media/cluster-sin-louvain.png" alt="Cluster Raw"></div>
+                        <div class="caption">A. Cluster Original</div>
+                    </div>
+                    <div>
+                        <div class="chart-container"><img src="media/cluster-con-louvain.png" alt="Cluster Louvain"></div>
+                        <div class="caption">B. Partición Louvain</div>
+                    </div>
+                </div>
+
+                <h3>El Factor de Unión: MaaS y Publicidad</h3>
+                <p>
+                    A pesar de las barreras lingüísticas y operativas, el cluster se mantiene unido. 
+                    Nuestra investigación ha detectado la presencia sistemática de <strong>patrones publicitarios idénticos</strong> y actualizaciones de malware compartidas.
+                    Descubrir esto nos hace considerarlo como una posible explicación de por qué este cluster existe: Si los actores están usando un MaaS, o contribuyen a un mercado negro, quizás de ahí surjan vínculos a modo de canales o de bots filtrados/compartidos.
+                    Se muestran a continuación dos ejemplos de estos patrones mencionados.
+                </p>
+
+                <div class="evidence-box">
+<span class="evidence-label">EVIDENCIA A: Mercado Negro (MISHALAND)</span>
+❤️❤️Самый ахуенный шоп - MISHALAND!❤️❤️
+👹Где вы можете купить деанон еблана который вас обидел👹
+💳У нас так же есть 💳 СС (кредитные карты)...
+😉Также начинает действовать недельная акция 1+1.
+</div>
+
+                <div class="evidence-box">
+<span class="evidence-label">EVIDENCIA B: Actualización Crítica (MaaS SOULKCRYPTER)</span>
+📦 [UPDATE] Soulkcrypter v3— “Soulkcrypter” Patch
+https://youtu.be/j9j8nWAMeJ0...
+✅ Fully undetected on latest Windows 10 / 11
+✅ Runtime & signature scanning BYPASS
+✅ Silent exit on sandbox environment
+
+Updated penetration testing utility
+File: Telegram_Bot_Creator.exe (0.06 MB)
+Uploaded via DarkForge v2.4
+</div>
+            </section>
+
+            <section>
+                <h2>4. Verificación de Hipótesis: Anatomía del Cluster</h2>
+                <p>
+                    Tras identificar estos patrones, procedimos a validar matemáticamente si dichos enlaces constituyen la columna vertebral del clúster. Para ello, analizamos la prevalencia de cada campaña y su capacidad para conectar comunidades que, de otro modo, permanecerían aisladas. En concreto, evaluamos a los bots que difunden mensajes como los mostrados previamente como evidencia, con el objetivo de comprobar si estos contenidos se propagan a través de múltiples comunidades dentro del clúster.
+
+Los resultados son concluyentes:
+                </p>
+
+                <table class="data-table">
+                    <thead>
+                        <tr>
+                            <th>SERVICIO / MAAS</th>
+                            <th>BOTS (Cluster)</th>
+                            <th>COMUNIDADES</th>
+                            <th>PENETRACIÓN</th>
+                            <th>CLASIFICACIÓN</th>
+                        </tr>
+                    </thead>
+                    <tbody>
+                        <tr style="background-color: #fffcfc;">
+                            <td><strong>1. MISHALAND (Market)</strong></td>
+                            <td>29</td>
+                            <td>9</td>
+                            <td><strong>45.0%</strong></td>
+                            <td><span class="tag-dominant">🔥 DOMINANTE</span></td>
+                        </tr>
+                        <tr>
+                            <td><strong>2. XWORM</strong></td>
+                            <td>23</td>
+                            <td>8</td>
+                            <td>40.0%</td>
+                            <td><span class="tag-transversal">✅ TRANSVERSAL</span></td>
+                        </tr>
+                        <tr>
+                            <td><strong>3. XCODERTOOLS</strong></td>
+                            <td>12</td>
+                            <td>5</td>
+                            <td>25.0%</td>
+                            <td><span class="tag-transversal">✅ TRANSVERSAL</span></td>
+                        </tr>
+                        <tr>
+                            <td>4. SOULKCRYPTER (MaaS)</td>
+                            <td>7</td>
+                            <td>3</td>
+                            <td>15.0%</td>
+                            <td><span class="tag-local">⚠️ LOCAL</span></td>
+                        </tr>
+                        <tr>
+                            <td>5. PHANTOM STEALER</td>
+                            <td>4</td>
+                            <td>3</td>
+                            <td>15.0%</td>
+                            <td><span class="tag-local">⚠️ LOCAL</span></td>
+                        </tr>
+                        <tr>
+                            <td>6. YUNDGDON365</td>
+                            <td>4</td>
+                            <td>3</td>
+                            <td>15.0%</td>
+                            <td><span class="tag-local">⚠️ LOCAL</span></td>
+                        </tr>
+                    </tbody>
+                </table>
+
+                <div class="insight-box">
+                    <strong>🚨 Análisis de Fragmentación (Stress Test):</strong><br>
+                    Hemos simulado la eliminación de los nodos vectores de estas campañas para medir la resiliencia estructural:
+                    <ul>
+                        <li>Si eliminamos <strong>Mishaland</strong>, el cluster colapsa y se fragmenta en <strong>50 pedazos</strong> aislados.</li>
+                        <li>Si eliminamos <strong>xWorm</strong>, la fragmentación es aún mayor: <strong>51 pedazos</strong>.</li>
+                        <li>Campañas locales como <strong>Soulkcrypter</strong> tienen un impacto menor (26 fragmentos).</li>
+                    </ul>
+                    Esto confirma que <strong>Mishaland y xWorm no son simples participantes, son la infraestructura de soporte</strong> del cluster.
+                </div>
+
+                <p>
+                    A continuación, presentamos la visualización superpuesta que revela cómo estas "arterias" de publicidad (en neón) 
+                    coinciden con caminos críticos que mantienen unida la infraestructura base (en gris).
+                </p>
+
+                <div class="iframe-wrapper">
+                    <iframe src="final_cluster_overlay.html" class="interactive-frame"></iframe>
+                </div>
+                <div class="caption">
+                    Fig 4. Anatomía del Cluster. La infraestructura base (Gris) se ilumina con las rutas activas de las campañas dominantes.
+                </div>
+                    <p>
+                        Con esto, tenemos una explicación lógica de la existencia del cluster. A pesar de que encontramos campañas con fines completamente distintos, su denominador común 
+                        es el uso de MaaS como xWorm, que posiblemente por su método de distribución permite que existan vínculos entre actores, puede que incluso sin su conocimiento en algunos casos.
+                        Lo mismo ocurre con la difusión del mercado negro MISHALAND y los otros casos estudiados.
+                        </p> 
+                        <p>
+                        De nuevo, cabe mencionar que las conclusiones que extraemos son de aquello que monitorizamos, realmente desconocemos la magnitud de estas conexiones o si estos vínculos observados 
+                        son causados por cómo se vende el malware o quizás filtraciones de tokens. En cualquier caso, ahora dejaremos de lado el <strong>por qué</strong> y nos centraremos en el <strong>quién</strong>.
+                    </p>
+            </section>
+
+            <section>
+                <h2>5. Perfilado de Actores y Atribución</h2>
+                <p>
+                    Procedemos a trabajar con grafos donde los actores son el centro de atención, para ver cómo se relacionan entre sí, 
+                    si existe infraestructura compartida de algún modo y para ver en qué canales vuelcan información.
+                </p>
+                <p>
+                    El análisis revela <strong>2 actores principales</strong> que tienen acceso a información de unos 60 bots registrados en el ecosistema. 
+                    Se observa infraestructura compartida y también bots compartidos entre sí. Esto refuerza la hipótesis de que el cluster 
+                    se sostiene a través de la difusión de malware, sugiriendo que el malware vendido es compartido por varias personas, 
+                    o que el acceso adquirido es para un token de bot compartido.
+                </p>
+                <p>
+                    Adicionalmente, observamos infraestructura que evidencia procesos de automatización (como instancias de <strong>n8n</strong>), 
+                    así como canales específicos donde convergen múltiples operadores para enviar información exfiltrada.
+                </p>
+
+                <h3>A. Topología de Infraestructura (C2 Control)</h3>
+                <p style="font-size: 13px; color: #666;">Relación directa entre los Operadores (Puppet Masters) y sus activos (Bots + IPs).</p>
+                <div class="iframe-wrapper">
+                    <iframe src="operator_topology.html" class="interactive-frame"></iframe>
+                </div>
+                <div class="caption">
+                    Fig 5. Estructura de Mando y Control. Identificación de Puppet Masters y sus granjas de bots.
+                </div>
+
+                <h3>B. Topología de Impacto (Channel Difussion)</h3>
+                <p style="font-size: 13px; color: #666;">Mapa de difusión que muestra en qué canales/grupos impactan estos operadores.</p>
+                <div class="iframe-wrapper">
+                    <iframe src="operator_chats_topology.html" class="interactive-frame"></iframe>
+                </div>
+                <div class="caption">
+                    Fig 6. Vectores de Infección. Canales y Grupos objetivo donde los operadores despliegan su actividad.
+                </div>
+            </section>
+
+            <section>
+                <h2>6.Análisis de Actores Críticos</h2>
+                <p> Una vez descubierto que los actores del cluster operan de forma aparentemente coordinada, ponemos el foco en cómo fluye la información a través de estos y sus bots asociados.
+
+                </p>
+                <p>
+                    Para comprender mejor las rutas de tráfico existentes en el cluster, implementamos visualización de diagramas <strong>Sankey</strong>.
+                    En concreto, veremos el diagrama para el actor con más bots atribuidos del cluster, que contrastamos previamente a través de BotScape 
+                    así como en el grafo previo de este reporte.
+                </p>
+                
+                <h3>6.1. Visualización de Flujo (Sankey Analysis)</h3>
+                <p>
+                    Nos interesa el tráfico de este actor puesto que actúa como un <strong>intermediario clave</strong> en el cluster, así que queremos confirmar que 
+                    efectivamente la información exfiltrada viaja y no es simplemente una relación unidireccional (bot -> actor).
+                </p>
+                <div style="font-family: sans-serif; line-height: 1.6; color: #333; max-width: 800px;">
+    <p>
+        El diagrama ofrece una intuición inicial sobre las interacciones del ecosistema. Para su interpretación, se han categorizado los nodos según la siguiente codificación:
+    </p>
+
+    <table style="width: 100%; border-collapse: collapse; margin: 20px 0; background-color: #f9f9f9;">
+        <thead>
+            <tr style="background-color: #eee; border-bottom: 2px solid #ccc;">
+                <th style="padding: 12px; text-align: left;">Elemento</th>
+                <th style="padding: 12px; text-align: left;">Descripción de la interacción</th>
+            </tr>
+        </thead>
+        <tbody>
+            <tr style="border-bottom: 1px solid #ddd;">
+                <td style="padding: 12px; font-weight: bold; color: #d4ac0d;">AMARILLO</td>
+                <td style="padding: 12px;">Bots o usuarios del ecosistema que interactúan con el actor o bots del actor.</td>
+            </tr>
+            <tr style="border-bottom: 1px solid #ddd;">
+                <td style="padding: 12px; font-weight: bold; color: #0b6316;">VERDE</td>
+                <td style="padding: 12px;">Bots o usuarios externos que entablan comunicación con los bots del entorno del actor.</td>
+            </tr>
+            <tr style="border-bottom: 1px solid #ddd;">
+                <td style="padding: 12px; font-weight: bold; color: #2e86c1;">AZUL</td>
+                <td style="padding: 12px;">Bots receptores de comandos ejecutados por el actor seleccionado.</td>
+            </tr>
+            <tr style="border-bottom: 1px solid #ddd;">
+                <td style="padding: 12px; font-weight: bold; color: #cb4335;">ROJO</td>
+                <td style="padding: 12px;">Destinos de infraestructura pública utilizados como canales.</td>
+            </tr>
+        </tbody>
+    </table>
+
+    <p style="background-color: #fff3cd; padding: 15px; border-left: 5px solid #ffeeba; font-size: 0.9em;">
+        <strong>Nota metodológica:</strong> Esta visualización no sigue un orden específico ni garantiza una secuencia causal, por lo que no deben extraerse conclusiones definitivas basadas únicamente en esta disposición.
+    </p>
+</div>
+
+                <div class="iframe-wrapper" style="background-color: #0a192f; border: none; padding: 15px; box-shadow: 0 8px 24px rgba(2, 12, 27, 0.5);">
+    <img src="media/sankey.png" alt="Diagrama Sankey de Flujo" style="width: 100%; display: block; border-radius: 0;">
+</div>
+                <div class="caption">
+                    Fig 7. Diagrama Sankey. Mapeo visual de las interacciones entrantes y salientes del actor principal.
+                </div>
+
+                <h3>6.2. Validación de la Hipótesis de Exfiltración</h3>
+                <p>
+                    Al observar el Sankey, surge la incógnita: ¿Realmente se aprovechan estas rutas para el envío de comunicaciones o los componentes trabajan de forma aislada?
+                    No tenemos una garantía inicial. Es por ello que realizamos la implementación de un <strong>script dedicado de correlación</strong> para comprobar si un mensaje ha pasado efectivamente por esta ruta de tráfico designada.
+                </p>
+                <p>
+                    Ciertamente, los resultados muestran muchos positivos, <strong>demostrando nuestra hipótesis</strong> de que las rutas de tráfico observadas 
+                    serían utilizadas activamente para la redirección y exfiltración de datos.
+                </p>
+
+                <div class="chart-container">
+                    <img src="media/correlacion-inbound-outbound.png" alt="Evidencia de Exfiltración xWorm">
+                </div>
+                <div class="caption">
+                    Fig 8. Traza Confirmada. El archivo malicioso entra al perímetro del actor y es distribuido, pasado un tiempo, a un canal de leaks.
+                </div>
+                
+                <p>
+                    De este modo, comprobamos cómo estos actores no actúan de forma aislada, sino que orquestan flujos complejos de información dentro del ecosistema.
+                </p>
+            </section>
+
+            <section>
+    <h2>7. Conclusiones y Próximos Pasos</h2>
+    <p>
+        En este informe hemos puesto de manifiesto parte del potencial de BotScape para pasar de una cantidad masiva de mensajes generados por bots sin una correlación aparente 
+        a una representación estructurada en forma de grafos —aunque igualmente compleja—, y cómo, de manera progresiva, hemos ido refinando el análisis 
+        (identificación de comunidades, actores y rutas de tráfico) hasta lograr una comprensión integral del clúster.
+    </p>
+    <p>
+        De cara a informes futuros, algunos de los próximos pasos que han quedado fuera del alcance de este trabajo incluyen, por un lado, la identificación de los puntos de venta 
+        de estas campañas (ya sea dentro de Telegram o en plataformas externas) y, por otro, la mejora y ampliación de las funcionalidades basadas en modelos de lenguaje (LLM), 
+        orientadas a profundizar en el análisis semántico y conductual de los bots.
+    </p>
+    <p>
+        Asimismo, debido a las limitaciones de GPU y recursos computacionales, las herramientas de inteligencia artificial desarrolladas han quedado en un segundo plano en esta fase del proyecto. 
+        No obstante, han servido como una sólida prueba de concepto que confirma su gran utilidad en investigaciones de este tipo. De hecho, el descubrimiento inicial de <em>MISHALAND</em> 
+        fue posible gracias a la implementación de un LLM especializado en el análisis de bots, el cual, a partir del contexto semántico de los mensajes y de la relación entre múltiples publicaciones, 
+        fue capaz de inferir la existencia de un mercado negro subyacente y formular una hipótesis coherente sobre su funcionamiento.
+    </p>
+</section>
+
+
+            <footer style="margin-top:60px; border-top:1px solid #dadce0; padding-top:20px; color:#999; font-size:13px; text-align:center;">
+                © 2025 BotScape Project. Documentación generada para fines académicos y de investigación.
+            </footer>
+
+        </div>
+        </main>
+
+    <script src="js/sidebar.js"></script>
+    <script>
+        renderSidebar('./');
+    </script>
+</body>
+</html>

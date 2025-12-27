@@ -1,0 +1,183 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+    <link rel="icon" href="../media/favicon.ico" type="image/x-icon">
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Hunter Engine | BotScape Docs</title>
+    <link rel="stylesheet" href="../styles.css">
+    
+    <script type="module">
+        import mermaid from 'https://cdn.jsdelivr.net/npm/mermaid@10/dist/mermaid.esm.min.mjs';
+        mermaid.initialize({ 
+            startOnLoad: true, 
+            theme: 'base',
+            securityLevel: 'loose',
+            themeVariables: {
+                mainBkg: '#ffffff',
+                clusterBkg: '#fafafa'
+            }
+        });
+    </script>
+
+    <style>
+        /* Estilos de Tarjeta (Base) */
+        .doc-container {
+            background: #ffffff;
+            border-radius: 8px;
+            box-shadow: 0 1px 3px 0 rgba(60,64,67,0.3);
+            padding: 40px; 
+            max-width: 1000px;
+            margin: 0 auto;
+        }
+
+        /* Ajustes de tipografía para la tarjeta */
+        h1 { margin-top: 0; }
+        hr { border: 0; border-top: 1px solid #dadce0; margin: 30px 0; }
+        
+        /* Centrado de Mermaid */
+        .mermaid {
+            display: flex;
+            justify-content: center;
+            margin: 30px 0;
+        }
+        .caption {
+            text-align: center;
+            font-size: 0.9rem;
+            color: #5f6368;
+            margin-top: -10px;
+            margin-bottom: 30px;
+        }
+
+        /* Estilos para bloques de código y código inline */
+        code {
+            background-color: #f1f3f4;
+            padding: 2px 4px;
+            border-radius: 4px;
+            font-family: monospace;
+            font-size: 0.9em;
+            color: #c7254e;
+        }
+        
+        pre {
+            background-color: #f5f5f5;
+            border-radius: 4px;
+            border: 1px solid #eee;
+            padding: 15px;
+            overflow-x: auto;
+        }
+        
+        /* Ajuste para que el bloque de código dentro de pre no tenga padding extra */
+        pre code {
+            background-color: transparent;
+            padding: 0;
+            color: #24292e;
+        }
+    </style>
+</head>
+<body>
+
+     <aside class="sidebar" id="sidebar-placeholder"></aside>
+
+    <main class="main-content">
+        <div class="doc-container">
+
+            <h1>Hunter Engine</h1>
+            <p>
+                El script <code>hunter.py</code> es el motor de recolección de BotScape. Su misión es hacer uso de las herramientas que proporciona VirusTotal para identificar, extraer y validar tokens de Telegram de muestras maliciosas.
+            </p>
+
+            <hr>
+
+            <h2>1. Arquitectura del Hunter</h2>
+            <div class="mermaid">
+                graph TD
+                    Trigger(Cron / Manual) -->|Start| Orchestrator
+                    
+                    subgraph "Fase 1: Búsqueda"
+                        Orchestrator -->|Queries| VT[VirusTotal API]
+                        VT -->|JSON List| Candidates[Candidatos]
+                    end
+
+                    subgraph "Fase 2: Extracción Inteligente"
+                        Candidates --> MetaCheck{¿Token en Metadata?}
+                        
+                        MetaCheck -->|Sí: Smart Peek| Valid[Validador]
+                        MetaCheck -->|No| Download[Descargar Binario]
+                        
+                        Download --> Deob[Deobfuscator]
+                        Deob -->|XOR / Base64| Yara[YARA Scanner]
+                        Yara -->|Tokens Extraídos| Valid
+                    end
+
+                    subgraph "Fase 3: Validación"
+                        Valid -->|getMe| API_TG[Telegram API]
+                        API_TG -->|200 OK| DB[(PostgreSQL)]
+                        API_TG -->|401 Unauth| Discard(Descartar)
+                    end
+
+                    style VT fill:#ffffff,stroke:#333,stroke-width:2px
+                    style DB fill:#263238,color:#fff
+                    style MetaCheck fill:#f5f5f5,stroke:#333
+            </div>
+            <p class="caption">Figura 1: Pipeline de extracción de 3 fases.</p>
+
+            <h2>2. Estrategia de Búsqueda Híbrida</h2>
+            <p>
+                El Hunter utiliza una estrategia polimórfica que prioriza la configuración extraída sobre el contenido crudo para ahorrar recursos.
+            </p>
+
+            <ul>
+                <li>
+                    <strong>Búsqueda por Configuración:</strong> Utiliza <code>malware_config</code>. Si VT ya extrajo la configuración del C2, la usamos directamente. Es el método más rápido y económico.
+                </li>
+                <li>
+                    <strong>Búsqueda por Contenido:</strong> Busca la cadena <code>api.telegram.org</code> en binarios (PE, ELF, APK) y scripts (Python) para casos donde la configuración automática falló.
+                </li>
+            </ul>
+
+            <h3>Queries Implementadas</h3>
+            <p>El sistema rota entre queries de alta fidelidad y de amplio espectro:</p>
+            <pre><code>queries = [
+  # 1. Configuración estructurada (High Fidelity)
+  'malware_config:"api.telegram.org" fs:{since_date}+',
+
+  # 2. Búsqueda Raw (Wide Net)
+  'type:peexe content:"api.telegram.org" fs:{since_date}+',
+  '(type:python OR type:powershell) content:"api.telegram.org"...'
+]</code></pre>
+
+            <h2>3. Pipeline de Ingeniería Inversa</h2>
+            <p>
+                Para los binarios ofuscados, el <code>ObfuscationHandler</code> aplica técnicas de fuerza bruta dirigida en memoria.
+            </p>
+
+            <p><strong>Smart Peek:</strong> Antes de descargar, revisamos <code>tags</code> y <code>names</code> en el JSON. Esto reduce el consumo de cuota de descarga significativamente.</p>
+
+            <h3>Rutinas de Decodificación</h3>
+            <ul>
+                <li><strong>Base64 Recursivo:</strong> Detecta cadenas B64 anidadas dentro del binario.</li>
+                <li><strong>XOR Brute-force:</strong> Busca la cadena ancla "telegram". Itera claves del 1 al 255. Si encuentra el ancla, usa esa clave para descifrar el payload completo automáticamente.</li>
+            </ul>
+
+            <h2>4. Persistencia</h2>
+            <p>Los hallazgos alimentan tres tablas críticas para el análisis topológico:</p>
+            <ul>
+                <li><strong><code>bots</code>:</strong> Inventario activo de amenazas.</li>
+                <li><strong><code>samples_intelligence</code>:</strong> Metadatos técnicos del malware (Hash, Imphash, SSDeep).</li>
+                <li><strong><code>hash_origin</code>:</strong> La tabla de enlace que permite la trazabilidad: <em>"¿Qué malware está distribuyendo este bot?"</em>.</li>
+            </ul>
+
+            <footer>
+                <p>© 2025 BotScape Project. Documentación generada para fines académicos y de investigación.</p>
+            </footer>
+
+        </div>
+        </main>
+
+    <script src="../js/sidebar.js"></script>
+    <script>
+        renderSidebar('../');
+    </script>
+</body>
+</html>

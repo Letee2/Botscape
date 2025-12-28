@@ -1,7 +1,4 @@
 #!/bin/bash
-Bash
-
-#!/bin/bash
 
 echo "🤖 Configurando cron jobs para Botscape..."
 

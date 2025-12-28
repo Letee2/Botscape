@@ -8,6 +8,7 @@
     --border-color: #dadce0;
     --code-bg: #f1f3f4;
     --accent-teal: #00796b;
+    --sidebar-width: 280px;
 }
 
 body {
@@ -22,7 +23,7 @@ body {
 
 /* --- SIDEBAR (Barra Lateral con Sticky Footer) --- */
 .sidebar {
-    width: 280px;
+    width: var(--sidebar-width);
     background-color: var(--sidebar-bg);
     border-right: 1px solid var(--border-color);
     position: fixed;
@@ -33,7 +34,11 @@ body {
     display: flex;
     flex-direction: column;
     padding: 0;
-    transition: transform 0.3s ease; /* Para suavidad en móvil */
+    transition: transform 0.3s ease;
+}
+
+.sidebar.collapsed {
+    transform: translateX(-100%);
 }
 
 .brand {
@@ -108,15 +113,14 @@ body {
 
 .github-btn:hover { background-color: #000; }
 
-/* --- BOTÓN HAMBURGUESA (Solo visible en móvil) --- */
-#mobile-nav-toggle {
-    display: none;
+/* --- BOTÓN TOGGLE HAMBURGUESA --- */
+#sidebar-toggle {
     position: fixed;
-    bottom: 20px;
-    right: 20px;
+    top: 20px;
+    left: 20px;
     width: 50px;
     height: 50px;
-    background: var(--primary-blue);
+    background: #102642;;
     color: white;
     border-radius: 50%;
     border: none;
@@ -124,15 +128,34 @@ body {
     z-index: 1100;
     cursor: pointer;
     font-size: 20px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    transition: all 0.3s ease;
+}
+
+#sidebar-toggle:hover {
+    background: #0e2038;
+    transform: scale(1.05);
+}
+
+/* Cuando el sidebar está visible, movemos el botón a la derecha del sidebar */
+.sidebar:not(.collapsed) ~ * #sidebar-toggle,
+body:not(.sidebar-collapsed) #sidebar-toggle {
+    left: calc(var(--sidebar-width) + 20px);
 }
 
 /* --- MAIN CONTENT --- */
 .main-content {
-    margin-left: 280px; 
+    margin-left: var(--sidebar-width); 
     padding: 60px max(60px, 10%); 
     width: 100%; 
     box-sizing: border-box;
     transition: margin-left 0.3s ease;
+}
+
+body.sidebar-collapsed .main-content {
+    margin-left: 0;
 }
 
 .main-content p, .main-content li, .main-content h1, .main-content h2, .main-content h3 {
@@ -171,18 +194,8 @@ pre { background-color: #2d2d2d; color: #f8f8f2; padding: 20px; border-radius: 8
 
 /* --- AJUSTES RESPONSIVE --- */
 @media (max-width: 1024px) {
-    .sidebar {
-        transform: translateX(-100%); /* Oculto a la izquierda */
-    }
-    .sidebar.active {
-        transform: translateX(0); /* Se desliza al activar */
-    }
     .main-content {
-        margin-left: 0;
         padding: 40px 20px;
-    }
-    #mobile-nav-toggle {
-        display: block; /* Aparece el botón de control */
     }
     .meta-header {
         flex-direction: column;
@@ -195,5 +208,5 @@ pre { background-color: #2d2d2d; color: #f8f8f2; padding: 20px; border-radius: 8
     h1 { font-size: 28px; }
     h2 { font-size: 22px; }
     .stat-val { font-size: 22px; }
-    .interactive-frame { height: 500px; } /* Reducimos altura de grafos en móvil */
+    .interactive-frame { height: 500px; }
 }

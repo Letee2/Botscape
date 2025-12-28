@@ -20,28 +20,37 @@ body {
     min-height: 100vh;
 }
 
-/* --- SIDEBAR (Barra Lateral) --- */
+/* --- SIDEBAR (Barra Lateral con Sticky Footer) --- */
 .sidebar {
     width: 280px;
     background-color: var(--sidebar-bg);
     border-right: 1px solid var(--border-color);
-    padding: 30px 20px;
     position: fixed;
-    height: 100%;
-    overflow-y: auto;
-    flex-shrink: 0;
-    top: 0; left: 0;
-    z-index: 100;
+    height: 100vh;
+    top: 0; 
+    left: 0;
+    z-index: 1000;
+    display: flex;
+    flex-direction: column;
+    padding: 0;
+    transition: transform 0.3s ease; /* Para suavidad en móvil */
 }
 
 .brand {
+    padding: 30px 20px 20px 20px;
+    flex-shrink: 0;
     font-size: 22px;
     font-weight: 600;
     color: var(--text-main);
-    margin-bottom: 40px;
     display: flex;
     align-items: center;
     gap: 12px;
+}
+
+.nav-content {
+    flex: 1;
+    overflow-y: auto;
+    padding: 0 20px 20px 20px;
 }
 
 .nav-group { margin-bottom: 30px; }
@@ -66,191 +75,125 @@ body {
     transition: all 0.2s;
 }
 
-.nav-link:hover {
+.nav-link:hover, .nav-link.active {
     background-color: #e8f0fe;
     color: var(--primary-blue);
 }
 
-.nav-link.active {
-    background-color: #e8f0fe;
-    color: var(--primary-blue);
+.nav-link.active { font-weight: 600; }
+
+.sidebar-footer {
+    padding: 20px;
+    border-top: 1px solid var(--border-color);
+    background-color: var(--sidebar-bg);
+    flex-shrink: 0;
+}
+
+.github-btn {
+    width: 100%;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    gap: 8px;
+    background-color: #24292e;
+    color: white !important;
+    padding: 12px;
+    border-radius: 6px;
+    text-decoration: none;
+    font-size: 13px;
     font-weight: 600;
-}
-
-/* --- MAIN CONTENT (Layout Corregido) --- */
-.main-content {
-    /* Dejamos el hueco del sidebar */
-    margin-left: 280px; 
-    
-    /* CORRECCIÓN: Padding dinámico. 
-       Usa el 10% del ancho para separar del sidebar y de la derecha, 
-       pero nunca menos de 60px */
-    padding: 60px max(60px, 10%); 
-    
-    /* CORRECCIÓN: Permitir que ocupe todo el ancho disponible */
-    width: 100%; 
+    transition: background-color 0.2s;
     box-sizing: border-box;
 }
 
-/* Para evitar que el texto sea una línea eterna difícil de leer,
-   limitamos el ancho SOLO de los párrafos y listas, pero dejamos 
-   que los gráficos e imágenes usen más espacio */
-.main-content p, 
-.main-content li, 
-.main-content h1, 
-.main-content h2, 
-.main-content h3 {
-    max-width: 900px; /* Ancho de lectura cómodo */
+.github-btn:hover { background-color: #000; }
+
+/* --- BOTÓN HAMBURGUESA (Solo visible en móvil) --- */
+#mobile-nav-toggle {
+    display: none;
+    position: fixed;
+    bottom: 20px;
+    right: 20px;
+    width: 50px;
+    height: 50px;
+    background: var(--primary-blue);
+    color: white;
+    border-radius: 50%;
+    border: none;
+    box-shadow: 0 4px 12px rgba(0,0,0,0.2);
+    z-index: 1100;
+    cursor: pointer;
+    font-size: 20px;
 }
 
-/* Los contenedores multimedia pueden ser más anchos para lucir los grafos */
-.chart-container, 
-.media-container, 
-.interactive-frame,
-.data-table {
-    max-width: 1200px; /* Más ancho que el texto para aprovechar la pantalla */
+/* --- MAIN CONTENT --- */
+.main-content {
+    margin-left: 280px; 
+    padding: 60px max(60px, 10%); 
+    width: 100%; 
+    box-sizing: border-box;
+    transition: margin-left 0.3s ease;
+}
+
+.main-content p, .main-content li, .main-content h1, .main-content h2, .main-content h3 {
+    max-width: 900px;
+}
+
+.chart-container, .media-container, .interactive-frame, .data-table {
+    max-width: 1200px;
     width: 100%;
 }
 
 /* --- TYPOGRAPHY --- */
-h1 {
-    font-size: 36px;
-    font-weight: 400;
-    letter-spacing: -0.5px;
-    margin-bottom: 15px;
-    color: var(--text-main);
-}
-
-h2 {
-    font-size: 26px;
-    font-weight: 500;
-    color: var(--text-main); 
-    margin-top: 50px;
-    padding-bottom: 12px;
-    border-bottom: 1px solid var(--border-color);
-}
-
-h3 {
-    font-size: 20px;
-    font-weight: 600;
-    margin-top: 35px;
-    color: var(--text-main);
-}
-
-p, li {
-    color: var(--text-body);
-    font-size: 16px;
-    margin-bottom: 16px;
-    line-height: 1.7; /* Mejor legibilidad */
-}
+h1 { font-size: 36px; font-weight: 400; margin-bottom: 15px; color: var(--text-main); }
+h2 { font-size: 26px; font-weight: 500; color: var(--text-main); margin-top: 50px; padding-bottom: 12px; border-bottom: 1px solid var(--border-color); }
+h3 { font-size: 20px; font-weight: 600; margin-top: 35px; color: var(--text-main); }
+p, li { color: var(--text-body); font-size: 16px; margin-bottom: 16px; line-height: 1.7; }
 
 /* --- COMPONENTS --- */
-code {
-    background-color: var(--code-bg);
-    padding: 2px 6px;
-    border-radius: 4px;
-    font-family: 'Consolas', monospace;
-    font-size: 13px;
-    color: #c5221f;
-}
+code { background-color: var(--code-bg); padding: 2px 6px; border-radius: 4px; font-family: 'Consolas', monospace; font-size: 13px; color: #c5221f; }
+pre { background-color: #2d2d2d; color: #f8f8f2; padding: 20px; border-radius: 8px; overflow-x: auto; font-size: 13px; max-width: 1000px; }
+.note-box { background-color: #fff8e1; border-left: 4px solid #fbc02d; padding: 20px; border-radius: 4px; margin: 30px 0; color: #5d4037; max-width: 900px; }
+.media-container { background: #ffffff; border: 1px solid var(--border-color); border-radius: 8px; padding: 15px; text-align: center; margin: 35px 0; box-shadow: 0 4px 10px rgba(0,0,0,0.05); }
+.caption { font-size: 13px; color: var(--text-secondary); margin-top: 10px; font-style: italic; }
 
-pre {
-    background-color: #2d2d2d;
-    color: #f8f8f2;
-    padding: 20px;
-    border-radius: 8px;
-    overflow-x: auto;
-    font-size: 13px;
-    line-height: 1.5;
-    max-width: 1000px; /* Code blocks un poco más anchos */
-}
+.link-card { display: block; background: white; border: 1px solid var(--border-color); padding: 25px; border-radius: 8px; text-decoration: none; transition: transform 0.2s, box-shadow 0.2s; margin-bottom: 20px; max-width: 900px; }
+.link-card:hover { transform: translateY(-2px); box-shadow: 0 6px 15px rgba(0,0,0,0.08); border-color: var(--primary-blue); }
+.lc-title { font-weight: 600; font-size: 17px; color: var(--primary-blue); }
 
-.note-box {
-    background-color: #fff8e1;
-    border-left: 4px solid #fbc02d;
-    padding: 20px;
-    border-radius: 4px;
-    font-size: 15px;
-    margin: 30px 0;
-    color: #5d4037;
-    max-width: 900px;
-}
-
-.media-container {
-    background: #ffffff;
-    border: 1px solid var(--border-color);
-    border-radius: 8px;
-    padding: 15px;
-    text-align: center;
-    margin: 35px 0;
-    box-shadow: 0 4px 10px rgba(0,0,0,0.05);
-}
-
-.media-container img, .media-container video {
-    max-width: 100%;
-    border-radius: 4px;
-}
-
-.caption {
-    font-size: 13px;
-    color: var(--text-secondary);
-    margin-top: 10px;
-    font-style: italic;
-}
-
-/* Cards de navegación */
-.link-card {
-    display: block;
-    background: white;
-    border: 1px solid var(--border-color);
-    padding: 25px;
-    border-radius: 8px;
-    text-decoration: none;
-    transition: transform 0.2s, box-shadow 0.2s;
-    margin-bottom: 20px;
-    max-width: 900px;
-}
-.link-card:hover {
-    transform: translateY(-2px);
-    box-shadow: 0 6px 15px rgba(0,0,0,0.08);
-    border-color: var(--primary-blue);
-}
-.lc-title { font-weight: 600; font-size: 17px; color: var(--primary-blue); margin-bottom: 6px; }
-.lc-desc { font-size: 14px; color: var(--text-secondary); }
-
-/* Footer */
-footer {
-    margin-top: 80px;
-    padding-top: 30px;
-    border-top: 1px solid var(--border-color);
-    color: var(--text-secondary);
-    font-size: 13px;
-    text-align: center;
-    max-width: 100%;
-}
-
-.github-btn {
-    display: flex; align-items: center; justify-content: center; gap: 8px;
-    background-color: #24292e; color: white; padding: 12px;
-    border-radius: 6px; text-decoration: none; font-size: 13px; font-weight: 600;
-    margin-top: 30px;
-    transition: background-color 0.2s;
-}
-.github-btn:hover { background-color: #000; }
-
-/* Estilos específicos para el Reporte (integrados aquí para limpieza) */
+/* --- REPORTE & STATS --- */
 .meta-header { display: flex; justify-content: space-between; align-items: flex-end; margin-bottom: 40px; border-bottom: 1px solid var(--border-color); padding-bottom: 20px; max-width: 1200px; }
-.tlp-badge { background-color: #fce8e6; color: #c5221f; padding: 4px 12px; border-radius: 16px; font-weight: 600; font-size: 12px; letter-spacing: 0.5px; }
-
+.tlp-badge { background-color: #fce8e6; color: #c5221f; padding: 4px 12px; border-radius: 16px; font-weight: 600; font-size: 12px; }
 .stats-row { display: grid; grid-template-columns: repeat(auto-fit, minmax(200px, 1fr)); gap: 20px; margin: 30px 0; max-width: 1200px; }
 .stat-box { background: #ffffff; border: 1px solid var(--border-color); padding: 20px; border-radius: 8px; text-align: center; box-shadow: 0 2px 5px rgba(0,0,0,0.05); }
-.stat-val { font-size: 28px; font-weight: 600; color: var(--primary-blue); display: block; margin-bottom: 5px; }
-.stat-lbl { font-size: 12px; text-transform: uppercase; color: var(--text-secondary); font-weight: 700; letter-spacing: 0.5px; }
+.stat-val { font-size: 28px; font-weight: 600; color: var(--primary-blue); display: block; }
+.interactive-frame { border: none; background: #050505; width: 100%; height: 800px; border-radius: 8px; }
 
-.chart-container { background-color: #f8f9fa; border: 1px dashed var(--border-color); padding: 20px; border-radius: 8px; }
-.interactive-frame { border: none; background: #050505; width: 100%; height: 800px; border-radius: 8px; margin-bottom: 10px; }
-
-/* Ajustes Responsive */
+/* --- AJUSTES RESPONSIVE --- */
 @media (max-width: 1024px) {
-    .main-content { padding: 40px 5%; }
+    .sidebar {
+        transform: translateX(-100%); /* Oculto a la izquierda */
+    }
+    .sidebar.active {
+        transform: translateX(0); /* Se desliza al activar */
+    }
+    .main-content {
+        margin-left: 0;
+        padding: 40px 20px;
+    }
+    #mobile-nav-toggle {
+        display: block; /* Aparece el botón de control */
+    }
+    .meta-header {
+        flex-direction: column;
+        align-items: flex-start;
+        gap: 20px;
+    }
+}
+
+@media (max-width: 600px) {
+    h1 { font-size: 28px; }
+    h2 { font-size: 22px; }
+    .stat-val { font-size: 22px; }
+    .interactive-frame { height: 500px; } /* Reducimos altura de grafos en móvil */
 }

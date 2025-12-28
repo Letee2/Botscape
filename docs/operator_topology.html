@@ -219,30 +219,34 @@
               drawGraph();
         </script>
     
-        <div style="
-            position: absolute; 
-            top: 20px; 
-            right: 20px; 
-            width: 350px;
-            background: rgba(15, 23, 42, 0.95); 
-            border: 1px solid #334155; 
-            border-radius: 12px; 
-            padding: 0; 
-            color: #fff; 
-            font-family: 'Segoe UI', sans-serif;
-            box-shadow: 0 10px 15px -3px rgba(0, 0, 0, 0.5);
-            backdrop-filter: blur(10px);
-            z-index: 999;
-        ">
-            <div style="padding: 15px; border-bottom: 1px solid #334155; display: flex; justify-content: space-between; align-items: center;">
-                <h3 style="margin:0; font-size: 14px; font-weight: 600; color: #f8fafc;">
-                    <i class="fa-solid fa-user-secret" style="margin-right: 8px; color: #38bdf8;"></i>
-                    THREAT ACTORS
-                </h3>
-            </div>
+        <div id="actors-panel" style="
+    position: absolute; 
+    top: 20px; 
+    right: 20px; 
+    width: 350px;
+    background: rgba(15, 23, 42, 0.95); 
+    border: 1px solid #334155; 
+    border-radius: 12px; 
+    padding: 0; 
+    color: #fff; 
+    font-family: 'Segoe UI', sans-serif;
+    box-shadow: 0 10px 15px -3px rgba(0, 0, 0, 0.5);
+    backdrop-filter: blur(10px);
+    z-index: 999;
+    transition: all 0.3s ease; /* Añadimos transición suave */
+">
+    <div style="padding: 15px; border-bottom: 1px solid #334155; display: flex; justify-content: space-between; align-items: center;">
+        <h3 style="margin:0; font-size: 14px; font-weight: 600; color: #f8fafc;">
+            <i class="fa-solid fa-user-secret" style="margin-right: 8px; color: #38bdf8;"></i>
+            THREAT ACTORS
+        </h3>
+        <button onclick="toggleActorsPanel()" style="background: none; border: 1px solid #334155; color: #94a3b8; cursor: pointer; border-radius: 4px; padding: 2px 8px; font-size: 12px;">
+            <i id="panel-toggle-icon" class="fa-solid fa-chevron-up"></i>
+        </button>
+    </div>
             
-            <div style="max-height: 400px; overflow-y: auto;">
-                <table style="width:100%; border-collapse:collapse; font-size: 12px;">
+          <div id="actors-table-container" style="max-height: 400px; overflow-y: auto;">
+        <table style="width:100%; border-collapse:collapse; font-size: 12px;">
                     <thead style="background: #1e293b; color: #94a3b8; position: sticky; top: 0;">
                         <tr>
                             <th style="padding: 8px; text-align: left;">ACTOR ID</th>
@@ -810,5 +814,22 @@
                 
             </div>
         </div>
+        <script>
+            function toggleActorsPanel() {
+    const panel = document.getElementById('actors-panel');
+    const container = document.getElementById('actors-table-container');
+    const icon = document.getElementById('panel-toggle-icon');
+    
+    if (container.style.display === 'none') {
+        container.style.display = 'block';
+        icon.classList.replace('fa-solid fa-chevron-down', 'fa-solid fa-chevron-up');
+        panel.style.width = '350px';
+    } else {
+        container.style.display = 'none';
+        icon.classList.replace('fa-solid fa-chevron-up', 'fa-solid fa-chevron-down');
+        panel.style.width = '200px'; // Se estrecha al estar minimizado para liberar más grafo
+    }
+}
+        </script>
         </body>
 </html>

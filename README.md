@@ -7,6 +7,7 @@
 ![Status](https://img.shields.io/badge/Status-Active-success)
 ![Python](https://img.shields.io/badge/Python-3.12-blue)
 ![Docker](https://img.shields.io/badge/Docker-Compose-orange)
+![Ollama](https://img.shields.io/badge/Ollama-Llama_3.1-white?logo=ollama&logoColor=black)
 ![Database](https://img.shields.io/badge/PostgreSQL-17-blue)
 
 **Botscape** es una plataforma modular de Threat Intelligence diseñada para monitorizar y perfilar campañas de ciberdelincuencia que utilizan la API de Telegram como infraestructura de Comando y Control (C2).
